@@ -2,7 +2,7 @@
 
 GitHub 负责触发、排队、日志与检查结果；专用 Instabox 负责执行。Mac 上的轻量后台代理每 30 秒检查队列，需要时调用官方 CLI 唤醒指定机器。**唤醒不经过 GitHub 托管 runner，因此不消耗托管运行分钟额度。**
 
-本方案按用户选择使用 Mac 后台代理；Mac 必须在线、未休眠且用户的 LaunchAgent 可运行。关闭 Codex 窗口不会停止该代理。Mac 休眠或离线时任务排队，恢复后继续检查。它不是独立于 Mac 的云端 webhook 服务。
+本方案按用户选择使用 Mac 后台代理；Mac 必须在线、未休眠且用户的 LaunchAgent 可运行。关闭 Codex 窗口不会停止该代理。Mac 休眠或离线时，新任务可能排队，恢复后继续检查。已经被云端 runner 领取的任务可独立执行并向 GitHub 回传。它不是独立于 Mac 的云端 webhook 服务。
 
 ```mermaid
 sequenceDiagram
@@ -156,7 +156,7 @@ python3 "$HOME/Library/Application Support/CodexInstaboxCI/waker.py" \
 launchctl bootout gui/$(id -u)/dev.codex.instabox-ci-waker
 ```
 
-runner 由 systemd 管理，远端可用 `sudo systemctl status codex-instabox-runner` 或 `journalctl -u codex-instabox-runner` 检查。若不再使用，应先卸载本机代理，再停用远端服务，并通过 GitHub 的 runner 管理界面移除注册。停用代理后，它不会再把手动暂停的 CI 机器唤醒。
+runner 由 systemd 管理，远端可用 `sudo systemctl status codex-instabox-runner` 或 `journalctl -u codex-instabox-runner` 检查。若不再使用，应先卸载本机代理，再停用远端服务，并通过 GitHub 的 runner 管理界面移除注册。`bootout` 停止当前登录会话中的代理；要防止下次登录自动恢复，另将对应 plist 移出 `~/Library/LaunchAgents/`。停用代理后，它不会再把手动暂停的 CI 机器唤醒。
 
 如果任务一直 queued，依次检查 Mac 是否在线、代理退出码、两端登录态、label、仓库/ref/工作流策略和远端服务。若临时容器已成功启动但测试失败，直接查看 GitHub job 日志，不反复重新注册 runner。
 

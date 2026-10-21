@@ -45,3 +45,19 @@ python3 -m unittest discover -s tests -v
 - 官方 JSON-RPC / stdio 接口说明：[Codex App Server](https://developers.openai.com/codex/app-server)。
 - historyMode 字段以实测 CLI 的 `codex app-server generate-json-schema --out /临时/目录 --experimental` 输出为准。
 - origin 检测缓存、legacy 读取兼容性、目标 checkout 分支冲突等是指定版本的实际观察，详见 [workflow.md](../skills/instabox-handoff/references/workflow.md)，不是官方未来行为保证。
+
+## Instabox 自托管 CI：真实验证
+
+验证日期：2026-10-22（Asia/Shanghai）。Runner 版本 v2.338.0，专用 Instabox Linux，Python 3.9 / 3.12 使用临时 Docker job 容器。Mac LaunchAgent 每 30 秒检查，凭证继续由本机 gh / Instabox CLI 管理。
+
+| 验证 | 真实结果 |
+| --- | --- |
+| 起始机器状态 | 先确认 runner 空闲，再由操作者 suspend 专用 CI 机器 |
+| 自动恢复 | 主分支 push 产生两个 queued job；后台代理日志记录 `resumed`，无需手动运行唤醒脚本 |
+| 正常执行与回传 | [运行 39633490445](https://github.com/jingchang0623-crypto/codex-instabox-handoff/actions/runs/39633490445)：Python 3.9 / 3.12 全部成功，runner_name 均为 instabox-ci-linux；每个容器执行 9 项测试 |
+| 托管运行计量 | 上述运行的 timing API 返回 `billable: {}`，没有 GitHub 托管 runner 的可计费执行项 |
+| 故意失败回传 | [运行 39633926984](https://github.com/jingchang0623-crypto/codex-instabox-handoff/actions/runs/39633926984)：smoke_failure=true，正常测试先通过，指定失败步骤 exit 1，GitHub 正确显示 failure |
+| 任务前检查 | 实际部署的 root-owned hook 拒绝模拟 pull_request/ref；真实主分支 push 和手动任务获准执行 |
+| 本地回归 | 9 项测试通过，涵盖原有工作流及无任务不唤醒、事件/ref/来源筛选、label、冷却、暂停/停止恢复和 hook 默认拒绝 |
+
+这里只验证了从 suspend 恢复，不把它等同于等待完整 30 分钟并验证服务自动空闲休眠。Mac 离线恢复场景未做断网实测，运行条件和故障诊断见 [CI 指南](instabox-ci.md)。
