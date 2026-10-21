@@ -1,18 +1,58 @@
 name: tests
 on:
   push:
-  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      smoke_failure:
+        description: 'Deliberately fail to verify failure reporting'
+        type: boolean
+        default: false
 permissions:
   contents: read
+concurrency:
+  group: instabox-ci-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: instabox-ci
+    timeout-minutes: 15
     strategy:
+      max-parallel: 1
+      fail-fast: false
       matrix:
         python-version: ['3.9', '3.12']
+    container:
+      image: python:${{ matrix.python-version }}-bookworm
+      options: --cpus 2 --memory 3g --pids-limit 512
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
-          python-version: ${{ matrix.python-version }}
-      - run: python -m unittest discover -s tests -v
+          persist-credentials: false
+      - name: Verify CI runtime
+        run: |
+          python --version
+          git --version
+          ssh-keygen -V 2>&1 | head -1 || true
+          test "$(uname -s)" = Linux
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+      - name: Verify failure reporting
+        if: ${{ inputs.smoke_failure == true }}
+        run: |
+          echo 'Intentional CI reporting smoke failure'
+          exit 1
+      - name: Publish execution summary
+        if: ${{ always() }}
+        env:
+          CI_RUNNER_NAME: ${{ runner.name }}
+          CI_PYTHON_VERSION: ${{ matrix.python-version }}
+          CI_JOB_STATUS: ${{ job.status }}
+        run: |
+          {
+            echo '### Instabox self-hosted CI'
+            echo "- Runner: $CI_RUNNER_NAME"
+            echo "- Python: $CI_PYTHON_VERSION"
+            echo "- Result: $CI_JOB_STATUS"
+            echo '- Execution: disposable Docker job container on a dedicated Instabox machine'
+          } >> "$GITHUB_STEP_SUMMARY"

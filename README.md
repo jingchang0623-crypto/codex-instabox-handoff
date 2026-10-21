@@ -2,7 +2,7 @@
 
 在 Codex 中连接 Instabox 云电脑，让一个项目完成 **本地开始 → 云端继续 → 回到本地**。
 
-这个仓库包含完整配置指南、可安装的 `instabox-handoff` Skill、兼容聊天创建脚本、Git 同步工具和隔离测试。使用已有 Instabox 机器即可，不需要部署额外服务。
+这个仓库包含完整配置指南、可安装的 `instabox-handoff` Skill、兼容聊天创建脚本、Git 同步工具、Mac 自动唤醒代理、Instabox 自托管 CI 和隔离测试。使用已有 Instabox 机器即可，不需要部署额外服务。
 
 > **兼容性边界**：在本项目实测版本中，默认 `paginated` 聊天不能跨主机 Handoff；需要通过 App Server 创建 `legacy` 兼容聊天。切换指令从另一个本地控制聊天发起。原生迁移由 Codex 桌面应用完成，Python 脚本本身不是聊天迁移服务。
 
@@ -58,6 +58,7 @@ $instabox-handoff 把 my-project 开发聊天切回本地，检查云端最新�
 | Skill 工作流和权限边界 | [SKILL.md](skills/instabox-handoff/SKILL.md) |
 | 本地→云端→本地的完整验证步骤 | [接力示例](docs/handoff-walkthrough.md) |
 | origin 缓存、分页聊天、草稿、分支占用等故障 | [操作与排障](skills/instabox-handoff/references/workflow.md) |
+| GitHub 派发、Mac 自动唤醒、Instabox 自托管执行与结果回传 | [CI 配置指南](docs/instabox-ci.md) |
 | 实测版本、证据范围和测试方法 | [验证说明](docs/validation.md) |
 | 个人项目与聊天索引格式 | [profile 示例](examples/profile.example.json) |
 
@@ -78,7 +79,7 @@ python3 skills/instabox-handoff/scripts/handoff.py sync --project my-project --d
 python3 -m unittest discover -s tests -v
 ```
 
-测试使用临时 Git 仓库、模拟 SSH/stdio 服务和临时 SSH 测试证书，不连接你的真实账户或云电脑。GitHub Actions 运行同一测试集。真实主机 Handoff 需要桌面端工具，不能由这些隔离测试代替。
+测试使用临时 Git 仓库、模拟 SSH/stdio 服务和临时 SSH 测试证书，不连接你的真实账户或云电脑。GitHub Actions 通过专用 Instabox runner 的临时 Python 容器运行同一测试集，主分支 push 或手动触发。Mac 后台代理负责从休眠中恢复机器，配置见 [CI 指南](docs/instabox-ci.md)。真实主机 Handoff 需要桌面端工具，不能由这些隔离测试代替。
 
 ## 限制与数据
 
